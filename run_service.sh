@@ -376,11 +376,11 @@ export BET_AMOUNT_PER_THRESHOLD_040=0
 export BET_AMOUNT_PER_THRESHOLD_050=0
 export BET_AMOUNT_PER_THRESHOLD_060=0
 export BET_AMOUNT_PER_THRESHOLD_070=0
-export BET_AMOUNT_PER_THRESHOLD_080=28023697808000000
-export BET_AMOUNT_PER_THRESHOLD_090=32369780800000000
-export BET_AMOUNT_PER_THRESHOLD_100=102369780800000000
-export BET_THRESHOLD=31236978080000000
-export PROMPT_TEMPLATE="You are a pragmatic sckeptic. Answer the question \`@{question}\`. Define \`@{yes}\` to represent \`yes\` and \`@{no}\` to represent \`no\`. Return respective probabilities \`p_yes\` and \`p_no\`."
+export BET_AMOUNT_PER_THRESHOLD_080=0
+export BET_AMOUNT_PER_THRESHOLD_090=323697801200000000
+export BET_AMOUNT_PER_THRESHOLD_100=1023697801200000000
+export BET_THRESHOLD=302369780120000000
+export PROMPT_TEMPLATE="You are a wizard. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
 
 service_dir="trader_service"
 build_dir="abci_build"
