@@ -83,6 +83,33 @@ ensure_minimum_balance() {
     echo ""
 }
 
+# Function to add a volume to a service in a Docker Compose file
+add_volume_to_service() {
+    local compose_file="$1"
+    local service_name="$2"
+    local volume_name="$3"
+    local volume_path="$4"
+
+    # Check if the Docker Compose file exists
+    if [ ! -f "$compose_file" ]; then
+        echo "Docker Compose file '$compose_file' not found."
+        return 1
+    fi
+
+    # Check if the service exists in the Docker Compose file
+    if ! grep -q "^[[:space:]]*${service_name}:" "$compose_file"; then
+        echo "Service '$service_name' not found in '$compose_file'."
+        return 1
+    fi
+
+    # Check if the volume is already defined for the service
+    if grep -q "^[[:space:]]*volumes:" "$compose_file"; then
+        sed -i "/^[[:space:]]*volumes:/a \ \ \ \ \ \ - ${volume_path}:${volume_name}:Z" "$compose_file"
+    else
+        sed -i "/^[[:space:]]*${service_name}:/a \ \ \ \ volumes:\n\ \ \ \ \ \ - ${volume_path}:${volume_name}:Z" "$compose_file"
+    fi
+}
+
 
 # ------------------
 # Script starts here
@@ -197,7 +224,7 @@ fi
 directory="trader"
 # This is a tested version that works well.
 # Feel free to replace this with a different version of the repo, but be careful as there might be breaking changes
-service_version="v0.6.2"
+service_version="v0.6.3"
 service_repo=https://github.com/valory-xyz/$directory.git
 if [ -d $directory ]
 then
@@ -374,16 +401,15 @@ export BET_AMOUNT_PER_THRESHOLD_020=0
 export BET_AMOUNT_PER_THRESHOLD_030=0
 export BET_AMOUNT_PER_THRESHOLD_040=0
 export BET_AMOUNT_PER_THRESHOLD_050=0
-export BET_AMOUNT_PER_THRESHOLD_060=0
-export BET_AMOUNT_PER_THRESHOLD_070=0
-export BET_AMOUNT_PER_THRESHOLD_080=123697801900000000
-export BET_AMOUNT_PER_THRESHOLD_090=552369780190000000
-export BET_AMOUNT_PER_THRESHOLD_100=1023697801900000000
-export BET_THRESHOLD=502369780190000000
-export SLEEP_TIME=2
+export BET_AMOUNT_PER_THRESHOLD_060=30000000000000000
+export BET_AMOUNT_PER_THRESHOLD_070=40000000000000000
+export BET_AMOUNT_PER_THRESHOLD_080=60000000000000000
+export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
+export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
+export BET_THRESHOLD=5000000000000000
+export PROMPT_TEMPLATE="With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
 export REDEEM_MARGIN_DAYS=10
-#export MECH_TOOL="prediction-online-sme"
-export PROMPT_TEMPLATE="You are a Gnostic Observer, a high level member of Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
+
 
 service_dir="trader_service"
 build_dir="abci_build"
@@ -419,6 +445,8 @@ fi
 poetry run autonomy deploy build --n $n_agents -ltm
 
 cd ..
+
+# add_volume_to_service "$PWD/trader_service/abci_build/docker-compose.yaml" "trader_abci_0" "/data" "$PWD/../.trader_runner/"
 
 # Run the deployment
 poetry run autonomy deploy run --build-dir $directory --detach
