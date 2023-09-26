@@ -1,0 +1,1 @@
+cd trader; poetry run autonomy deploy stop --build-dir trader_service/abci_build; cd .. 

@@ -187,6 +187,7 @@ if [ -d $store ]; then
         fi
     done
 
+    echo "Store ok!"
     rpc=$(cat $rpc_path)
     agent_address=$(cat $agent_address_path)
     service_id=$(cat $service_id_path)
@@ -202,11 +203,14 @@ fi
 # Prompt for RPC
 [[ -z "${rpc}" ]] && read -rsp "Enter a Gnosis RPC that supports eth_newFilter [hidden input]: " rpc && echo || rpc="${rpc}"
 
+ echo "Check eth_newFilter ...!"
 # Check if eth_newFilter is supported
 new_filter_supported=$(curl -s -S -X POST \
   -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_newFilter","params":["invalid"],"id":1}' "$rpc" | \
   $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['error']['message']=='The method eth_newFilter does not exist/is not available')")
+
+
 
 if [ "$new_filter_supported" = True ]
 then
@@ -405,6 +409,7 @@ export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
 export BET_THRESHOLD=5000000000000000
 export PROMPT_TEMPLATE="With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
 export REDEEM_MARGIN_DAYS=10
+
 
 service_dir="trader_service"
 build_dir="abci_build"
