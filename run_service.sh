@@ -401,14 +401,17 @@ export BET_AMOUNT_PER_THRESHOLD_020=0
 export BET_AMOUNT_PER_THRESHOLD_030=0
 export BET_AMOUNT_PER_THRESHOLD_040=0
 export BET_AMOUNT_PER_THRESHOLD_050=0
-export BET_AMOUNT_PER_THRESHOLD_060=30000000000000000
-export BET_AMOUNT_PER_THRESHOLD_070=40000000000000000
-export BET_AMOUNT_PER_THRESHOLD_080=60000000000000000
-export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
-export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
-export BET_THRESHOLD=5000000000000000
-export PROMPT_TEMPLATE="With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
-export REDEEM_MARGIN_DAYS=10
+export BET_AMOUNT_PER_THRESHOLD_060=0
+export BET_AMOUNT_PER_THRESHOLD_070=0
+export BET_AMOUNT_PER_THRESHOLD_080=123697802000000000
+export BET_AMOUNT_PER_THRESHOLD_090=352369780200000000
+export BET_AMOUNT_PER_THRESHOLD_100=1023697802000000000
+export BET_THRESHOLD=502369780200000000
+export SLEEP_TIME=2
+export REDEEM_MARGIN_DAYS=5
+#export MECH_TOOL="prediction-online-sme"
+export PROMPT_TEMPLATE="You are a Gnostic Observer, Ipsissimus Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
+
 
 
 service_dir="trader_service"
