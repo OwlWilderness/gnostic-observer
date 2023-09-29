@@ -158,6 +158,7 @@ echo ""
 echo "This script will assist you in setting up and running the Trader service (https://github.com/valory-xyz/trader)."
 echo ""
 
+
 # Check if user is inside a venv
 if [[ "$VIRTUAL_ENV" != "" ]]
 then
@@ -593,7 +594,7 @@ export BET_AMOUNT_PER_THRESHOLD_090=352369780200000000
 export BET_AMOUNT_PER_THRESHOLD_100=1023697802000000000
 export BET_THRESHOLD=502369780200000000
 export SLEEP_TIME=2
-export REDEEM_MARGIN_DAYS=5
+export REDEEM_MARGIN_DAYS=10
 #export MECH_TOOL="prediction-online-sme"
 export PROMPT_TEMPLATE="You are a Gnostic Observer, Ipsissimus Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
 
