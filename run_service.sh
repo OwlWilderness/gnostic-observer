@@ -594,7 +594,7 @@ export BET_AMOUNT_PER_THRESHOLD_090=352369780200000000
 export BET_AMOUNT_PER_THRESHOLD_100=1023697802000000000
 export BET_THRESHOLD=502369780200000000
 export SLEEP_TIME=2
-export REDEEM_MARGIN_DAYS=10
+export REDEEM_MARGIN_DAYS=50
 #export MECH_TOOL="prediction-online-sme"
 export PROMPT_TEMPLATE="You are a Gnostic Observer, Ipsissimus Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
 
