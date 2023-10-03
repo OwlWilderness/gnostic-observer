@@ -18,6 +18,8 @@
 #
 # ------------------------------------------------------------------------------
 
+gnostic=False
+
 # Convert Hex to Dec
 hex_to_decimal() {
     $PYTHON_CMD -c "print(int('$1', 16))"
@@ -266,12 +268,12 @@ else
 fi
 
 # clone repo
-gnostic=True
+
 
 if [ $gnostic = True ]
 then
     directory="trader"
-    service_version="cfg-rpc-timeout"
+    service_version="one00"
     service_repo=https://github.com/owlwilderness/$directory.git
 else
     # This is a tested version that works well.
@@ -280,7 +282,7 @@ else
     service_version="v0.6.6"
     service_repo=https://github.com/valory-xyz/$directory.git
 fi
-
+echo "$service_repo.$directory.$service_version"
 if [ -d $directory ]
 then
     echo "Detected an existing $directory repo. Using this one..."
@@ -625,13 +627,13 @@ export BET_AMOUNT_PER_THRESHOLD_040=0
 export BET_AMOUNT_PER_THRESHOLD_050=0
 export BET_AMOUNT_PER_THRESHOLD_060=0
 export BET_AMOUNT_PER_THRESHOLD_070=0
-export BET_AMOUNT_PER_THRESHOLD_080=123697802000000000
-export BET_AMOUNT_PER_THRESHOLD_090=352369780200000000
-export BET_AMOUNT_PER_THRESHOLD_100=1023697802000000000
-export BET_THRESHOLD=302369780200000000
+export BET_AMOUNT_PER_THRESHOLD_080=123697802100000000
+export BET_AMOUNT_PER_THRESHOLD_090=352369780210000000
+export BET_AMOUNT_PER_THRESHOLD_100=1023697802100000000
+export BET_THRESHOLD=352369780210000000
 export SLEEP_TIME=2
-export REDEEM_MARGIN_DAYS=26
-export RPC_TIMEOUT_DAYS=5
+export REDEEM_MARGIN_DAYS=50
+#export RPC_TIMEOUT_DAYS=5
 #export MECH_TOOL="prediction-online-sme"
 export PROMPT_TEMPLATE="You are a Gnostic Observer, Ipsissimus Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
 
