@@ -1,3 +1,17 @@
+# Gnostic Observer
+
+Coding Clairvoyance Hackathon on Gnosis Trading Agent 
+
+- Predictions for Agent Safe
+https://predictions.oaksprout.repl.co/agents/0x44d97681a1d4d86d8ddb7d960b063e22fd9db490
+
+- Gnosis Scan
+https://gnosisscan.io/address/0x44d97681a1d4d86d8ddb7d960b063e22fd9db490
+
+- Mirror Article:
+https://mirror.xyz/quantumtekh.eth/j9Jgz5yaRSwMZNr2VSIITF5ZeUrDgU0mOzOMGI0o2lk
+
+- Hackathon Link: https://hackathon.olas.network/
 # trader-quickstart
 
 A quickstart for the trader agent for AI prediction markets on Gnosis at https://github.com/valory-xyz/trader
