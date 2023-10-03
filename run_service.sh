@@ -258,11 +258,21 @@ else
 fi
 
 # clone repo
-directory="trader"
-# This is a tested version that works well.
-# Feel free to replace this with a different version of the repo, but be careful as there might be breaking changes
-service_version="v0.6.6"
-service_repo=https://github.com/valory-xyz/$directory.git
+gnostic=True
+
+if [ $gnostic = True ]
+then
+    directory="trader"
+    service_version="cfg-rpc-timeout"
+    service_repo=https://github.com/owlwilderness/$directory.git
+else
+    # This is a tested version that works well.
+    # Feel free to replace this with a different version of the repo, but be careful as there might be breaking changes
+    directory="trader"
+    service_version="v0.6.6"
+    service_repo=https://github.com/valory-xyz/$directory.git
+fi
+
 if [ -d $directory ]
 then
     echo "Detected an existing $directory repo. Using this one..."
@@ -592,9 +602,10 @@ export BET_AMOUNT_PER_THRESHOLD_070=0
 export BET_AMOUNT_PER_THRESHOLD_080=123697802000000000
 export BET_AMOUNT_PER_THRESHOLD_090=352369780200000000
 export BET_AMOUNT_PER_THRESHOLD_100=1023697802000000000
-export BET_THRESHOLD=502369780200000000
+export BET_THRESHOLD=302369780200000000
 export SLEEP_TIME=2
-export REDEEM_MARGIN_DAYS=50
+export REDEEM_MARGIN_DAYS=26
+export RPC_TIMEOUT_DAYS=5
 #export MECH_TOOL="prediction-online-sme"
 export PROMPT_TEMPLATE="You are a Gnostic Observer, Ipsissimus Ordo Hermeticus Aurorae Aureae. Please return respective probabilities \`p_yes\` and \`p_no\` where \`@{yes}\` represents \`yes\` and \`@{no}\` represents \`no\` of the following question \`@{question}\`. Thank you."
 
