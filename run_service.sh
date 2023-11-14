@@ -178,9 +178,9 @@ get_private_key() {
 
 # Function to warm start the policy
 warm_start() {
-    echo '["prediction-online", "prediction-online-sme", "prediction-online-summarized-info", "prediction-sentence-embedding-bold", "prediction-sentence-embedding-conservative"]' | sudo tee "$PWD/../$store/available_tools_store.json"  > /dev/null
-    echo '{"counts": [1,1,1,1,1], "eps": 0.1, "rewards": [0.0,0.0,0.0,0.0,0.0]}' | sudo tee "$PWD/../$store/policy_store.json"  > /dev/null
-    echo '{}' | sudo tee "$PWD/../$store/utilized_tools.json"  > /dev/null
+    echo '["prediction-online", "prediction-online-sme", "prediction-online-summarized-info", "prediction-sentence-embedding-bold", "prediction-sentence-embedding-conservative"]' | tee "$PWD/../$store/available_tools_store.json"  > /dev/null
+    echo '{"counts": [1,1,1,1,1], "eps": 0.1, "rewards": [0.0,0.0,0.0,0.0,0.0]}' | tee "$PWD/../$store/policy_store.json"  > /dev/null
+    echo '{}' | tee "$PWD/../$store/utilized_tools.json"  > /dev/null
 }
 
 # Function to add a volume to a service in a Docker Compose file
@@ -784,7 +784,7 @@ export BET_AMOUNT_PER_THRESHOLD_070=0
 export BET_AMOUNT_PER_THRESHOLD_080=30000000000000000
 export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
 export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
-export BET_THRESHOLD=5000000000000000
+export BET_THRESHOLD=50000000000000000
 export TRADING_STRATEGY=kelly_criterion
 export PROMPT_TEMPLATE="Please take over the role of a Data Scientist to evaluate the given question. With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
 export IRRELEVANT_TOOLS='["openai-text-davinci-002", "openai-text-davinci-003", "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", "stabilityai-stable-diffusion-768-v2-1", "deepmind-optimization-strong", "deepmind-optimization", "claude-prediction-offline", "prediction-offline", "prediction-offline-sme", "claude-prediction-online"]'
@@ -809,7 +809,7 @@ then
     else
         # If the above command fails, use sudo to remove
         echo "You will need to provide sudo password in order for the script to delete part of the build artifacts."
-        sudo rm -rf "$build_dir"
+        rm -rf "$build_dir"
         echo "Directory "$build_dir" removed successfully."
     fi
 else
@@ -834,7 +834,7 @@ cd ..
 warm_start
 
 add_volume_to_service "$PWD/trader_service/abci_build/docker-compose.yaml" "trader_abci_0" "/data" "$PWD/../$store/"
-sudo chown -R $(whoami) "$PWD/../$store/"
+chown -R $(whoami) "$PWD/../$store/"
 
 # Run the deployment
 poetry run autonomy deploy run --build-dir $directory --detach
