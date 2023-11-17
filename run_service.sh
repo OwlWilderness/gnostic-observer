@@ -438,7 +438,7 @@ fi
 directory="trader"
 # This is a tested version that works well.
 # Feel free to replace this with a different version of the repo, but be careful as there might be breaking changes
-service_version="v0.9.1"
+service_version="v0.9.2"
 service_repo=https://github.com/valory-xyz/$directory.git
 if [ -d $directory ]
 then
@@ -784,7 +784,7 @@ export BET_AMOUNT_PER_THRESHOLD_070=0
 export BET_AMOUNT_PER_THRESHOLD_080=30000000000000000
 export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
 export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
-export BET_THRESHOLD=5000000000000000
+export BET_THRESHOLD=50000000000000000
 export TRADING_STRATEGY=kelly_criterion
 export PROMPT_TEMPLATE="Please take over the role of a Data Scientist to evaluate the given question. With the given question \"@{question}\" and the \`yes\` option represented by \`@{yes}\` and the \`no\` option represented by \`@{no}\`, what are the respective probabilities of \`p_yes\` and \`p_no\` occurring?"
 export IRRELEVANT_TOOLS='["openai-text-davinci-002", "openai-text-davinci-003", "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5", "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1", "stabilityai-stable-diffusion-768-v2-1", "deepmind-optimization-strong", "deepmind-optimization", "claude-prediction-offline", "prediction-offline", "prediction-offline-sme", "claude-prediction-online"]'
@@ -809,7 +809,7 @@ then
     else
         # If the above command fails, use sudo to remove
         echo "You will need to provide sudo password in order for the script to delete part of the build artifacts."
-        sudo rm -rf "$build_dir"
+        rm -rf "$build_dir"
         echo "Directory "$build_dir" removed successfully."
     fi
 else
@@ -834,6 +834,7 @@ cd ..
 warm_start
 
 add_volume_to_service "$PWD/trader_service/abci_build/docker-compose.yaml" "trader_abci_0" "/data" "$PWD/../$store/"
+chown -R $(whoami) "$PWD/../$store/"
 
 # Run the deployment
 poetry run autonomy deploy run --build-dir $directory --detach
