@@ -21,6 +21,7 @@
 """This script performs staking related operations."""
 
 import argparse
+import dotenv
 import sys
 import time
 import traceback
@@ -67,9 +68,10 @@ if __name__ == "__main__":
             help="True if the service should be unstaked, False if it should be staked",
             default=False,
         )
+        parser.add_argument("--password", type=str, help="Private key password")
         args = parser.parse_args()
         ledger_api = EthereumApi(address=args.rpc)
-        owner_crypto = EthereumCrypto(private_key_path=args.owner_private_key_path)
+        owner_crypto = EthereumCrypto(private_key_path=args.owner_private_key_path, password=args.password)
         if args.unstake:
             if not is_service_staked(ledger_api, args.service_id, args.staking_contract_address):
                 # the service is not staked, so we don't need to do anything
@@ -91,17 +93,18 @@ if __name__ == "__main__":
                 formatted_next_ts = datetime.utcfromtimestamp(next_ts).strftime('%Y-%m-%d %H:%M:%S UTC')
 
                 print(
-                    "WARNING: The liveness period has not been reached\n"
-                    "-------------------------------------------------\n"
+                    "WARNING: Staking checkpoint call not available yet\n"
+                    "--------------------------------------------------\n"
                     f"The liveness period ({liveness_period/3600} hours) has not passed since the last checkpoint call.\n"
                     f"  - {formatted_last_ts} - Last checkpoint call.\n"
                     f"  - {formatted_next_ts} - Next checkpoint call availability.\n"
                     "\n"
-                    "If you proceed with unstaking, you will lose any rewards accrued after the last checkpoint call.\n"
-                    "Consider waiting until the liveness period has passed."
+                    "If you proceed with unstaking, your agent's work done between the last checkpoint call until now will not be accounted for rewards.\n"
+                    "(Note: To maximize agent work eligible for rewards, the recommended practice is to unstake shortly after a checkpoint has been called and stake again immediately after.)\n"
                 )
 
                 user_input = input("Do you want to continue unstaking? (yes/no)\n").lower()
+                print()
 
                 if user_input not in ["yes", "y"]:
                     print("Terminating script.")
@@ -145,7 +148,7 @@ if __name__ == "__main__":
             print("No rewards available. The service cannot be staked.")
             sys.exit(0)
 
-        print(f"Rewards available: {available_rewards}. Staking the service...")
+        print(f"Rewards available: {available_rewards/10**18:.2f} OLAS. Staking the service...")
         stake_txs = get_stake_txs(
             ledger_api,
             args.service_id,
@@ -159,4 +162,6 @@ if __name__ == "__main__":
     except Exception as e:  # pylint: disable=broad-except
         print(f"An error occurred while executing {Path(__file__).name}: {str(e)}")
         traceback.print_exc()
+        dotenv.unset_key("../.trader_runner/.env", "USE_STAKING")
+        print("\nPlease confirm whether your service is participating in a staking program, and then retry running the script.")
         sys.exit(1)

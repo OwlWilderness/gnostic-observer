@@ -74,6 +74,10 @@ To stop your agent, use:
 ./stop_service.sh
 ```
 
+### Backups
+
+Agent runners are recommended to create a [backup](https://github.com/valory-xyz/trader-quickstart#backup-and-recovery) of the relevant secret key material.
+
 ## Observe your agents
 
 1. Use the `trades` command to display information about placed trades by a given address:
@@ -83,11 +87,18 @@ To stop your agent, use:
     ```
 
     Or restrict the search to specific dates by defining the "from" and "to" dates:
+
     ```bash
     cd trader; poetry run python ../trades.py YOUR_SAFE_ADDRESS --from-date 2023-08-15:03:50:00 --to-date 2023-08-20:13:45:00; cd ..
     ```
 
-2. Use this command to investigate your agent's logs:
+2. Use the `report` command to display a summary of the service status:
+
+   ```bash
+   cd trader; poetry run python ../report.py; cd ..
+   ```
+
+3. Use this command to investigate your agent's logs:
 
     ```bash
     cd trader; poetry run autonomy analyse logs --from-dir trader_service/abci_build/persistent_data/logs/ --agent aea_0 --reset-db; cd ..
@@ -126,6 +137,29 @@ rm -rf trader
 ```
 
 Then continue above with "Run the script".
+
+## Change the password of your key files
+
+> :warning: **Warning** <br />
+> The code within this repository is provided without any warranties. It is important to note that the code has not been audited for potential security vulnerabilities.
+>
+> If you are updating the password for your key files, it is strongly advised to [create a backup](https://github.com/valory-xyz/trader-quickstart#backup-and-recovery) of the old configuration (located in the `./trader_runner` folder) before proceeding. This backup should be retained until you can verify that the changes are functioning as expected. For instance, run the service multiple times to ensure there are no issues with the new password before discarding the backup.
+
+If you have started you script specifying a password to protect your key files, you can change it by running the following command:
+
+```bash
+cd trader; poetry run python ../scripts/change_keys_json_password.py ../.trader_runner --current_password <current_password> --new_password <new_password>; cd ..
+```
+
+This will change the password in the following files:
+
+- `.trader_runner/keys.json`
+- `.trader_runner/operator_keys.json`
+- `.trader_runner/agent_pkey.txt`
+- `.trader_runner/operator_pkey.txt`
+
+If your key files are not encrypted, you must not use the `--current-password` argument. If you want to remove the password protection of your key files,
+you must not specify the `--new-password` argument.
 
 ## Advice for Mac users
 

@@ -21,22 +21,44 @@
 """This script queries the OMEN subgraph to obtain the trades of a given address."""
 
 import datetime
+import re
 import time
-from argparse import ArgumentParser
+from argparse import Action, ArgumentError, ArgumentParser, Namespace
 from collections import defaultdict
 from enum import Enum
+from pathlib import Path
 from string import Template
-from typing import Any
+from typing import Any, Dict, Optional
 
 import requests
 
+from scripts.mech_events import get_mech_requests
 
+
+IRRELEVANT_TOOLS = [
+    "openai-text-davinci-002",
+    "openai-text-davinci-003",
+    "openai-gpt-3.5-turbo",
+    "openai-gpt-4",
+    "stabilityai-stable-diffusion-v1-5",
+    "stabilityai-stable-diffusion-xl-beta-v2-2-2",
+    "stabilityai-stable-diffusion-512-v2-1",
+    "stabilityai-stable-diffusion-768-v2-1",
+    "deepmind-optimization-strong",
+    "deepmind-optimization",
+]
 QUERY_BATCH_SIZE = 1000
 DUST_THRESHOLD = 10000000000000
 INVALID_ANSWER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 FPMM_CREATOR = "0x89c5cc945dd550bcffb72fe42bff002429f46fec"
 DEFAULT_FROM_DATE = "1970-01-01T00:00:00"
 DEFAULT_TO_DATE = "2038-01-19T03:14:07"
+DEFAULT_FROM_TIMESTAMP = 0
+DEFAULT_TO_TIMESTAMP = 2147483647
+SCRIPT_PATH = Path(__file__).resolve().parent
+STORE_PATH = Path(SCRIPT_PATH, ".trader_runner")
+RPC_PATH = Path(STORE_PATH, "rpc.txt")
+WXDAI_CONTRACT_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
 
 headers = {
@@ -148,6 +170,8 @@ class MarketAttribute(Enum):
     NUM_REDEEMED = "Num_redeemed"
     INVESTMENT = "Investment"
     FEES = "Fees"
+    MECH_CALLS = "Mech_calls"
+    MECH_FEES = "Mech_fees"
     EARNINGS = "Earnings"
     NET_EARNINGS = "Net_earnings"
     REDEMPTIONS = "Redemptions"
@@ -174,10 +198,67 @@ STATS_TABLE_COLS = list(MarketState) + ["TOTAL"]
 STATS_TABLE_ROWS = list(MarketAttribute)
 
 
+def get_balance(address: str, rpc_url: str) -> int:
+    """Get the native xDAI balance of an address in wei."""
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "jsonrpc": "2.0",
+        "method": "eth_getBalance",
+        "params": [address, "latest"],
+        "id": 1,
+    }
+    response = requests.post(rpc_url, headers=headers, json=data)
+    return int(response.json().get("result"), 16)
+
+
+def get_token_balance(
+    gnosis_address: str, token_contract_address: str, rpc_url: str
+) -> int:
+    """Get the token balance of an address in wei."""
+    function_selector = "70a08231"  # function selector for balanceOf(address)
+    padded_address = gnosis_address.replace("0x", "").rjust(
+        64, "0"
+    )  # remove '0x' and pad the address to 32 bytes
+    data = function_selector + padded_address
+
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "eth_call",
+        "params": [{"to": token_contract_address, "data": data}, "latest"],
+        "id": 1,
+    }
+    response = requests.post(rpc_url, json=payload)
+    result = response.json().get("result", "0x0")
+    balance_wei = int(result, 16)  # convert hex to int
+    return balance_wei
+
+
+class EthereumAddressAction(Action):
+    """Argparse class to validate an Ethereum addresses."""
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        namespace: Namespace,
+        values: Any,
+        option_string: Optional[str] = None,
+    ) -> None:
+        """Validates an Ethereum addresses."""
+
+        address = values
+        if not re.match(r"^0x[a-fA-F0-9]{40}$", address):
+            raise ArgumentError(self, f"Invalid Ethereum address: {address}")
+        setattr(namespace, self.dest, address)
+
+
 def _parse_args() -> Any:
-    """Parse the creator positional argument."""
+    """Parse the script arguments."""
     parser = ArgumentParser(description="Get trades on Omen for a Safe address.")
-    parser.add_argument("creator")
+    parser.add_argument(
+        "creator",
+        action=EthereumAddressAction,
+        help="Ethereum address of the service Safe",
+    )
     parser.add_argument(
         "--from-date",
         type=datetime.datetime.fromisoformat,
@@ -228,10 +309,10 @@ def _to_content(q: str) -> dict[str, Any]:
 
 def _query_omen_xdai_subgraph(  # pylint: disable=too-many-locals
     creator: str,
-    from_timestamp: float,
-    to_timestamp: float,
-    fpmm_from_timestamp: float,
-    fpmm_to_timestamp: float,
+    from_timestamp: float = DEFAULT_FROM_TIMESTAMP,
+    to_timestamp: float = DEFAULT_TO_TIMESTAMP,
+    fpmm_from_timestamp: float = DEFAULT_FROM_TIMESTAMP,
+    fpmm_to_timestamp: float = DEFAULT_TO_TIMESTAMP,
 ) -> dict[str, Any]:
     """Query the subgraph."""
     url = "https://api.thegraph.com/subgraphs/name/protofire/omen-xdai"
@@ -311,11 +392,24 @@ def _query_conditional_tokens_gc_subgraph(creator: str) -> dict[str, Any]:
     return all_results
 
 
-def wei_to_dai(wei: int) -> str:
-    """Converts and formats Wei to DAI."""
-    dai = wei / 10**18
-    formatted_dai = "{:.2f}".format(dai)
-    return f"{formatted_dai} DAI"
+def wei_to_unit(wei: int) -> float:
+    """Converts wei to currency unit."""
+    return wei / 10**18
+
+
+def wei_to_xdai(wei: int) -> str:
+    """Converts and formats wei to xDAI."""
+    return "{:.2f} xDAI".format(wei_to_unit(wei))
+
+
+def wei_to_wxdai(wei: int) -> str:
+    """Converts and formats wei to WxDAI."""
+    return "{:.2f} WxDAI".format(wei_to_unit(wei))
+
+
+def wei_to_olas(wei: int) -> str:
+    """Converts and formats wei to WxDAI."""
+    return "{:.2f} OLAS".format(wei_to_unit(wei))
 
 
 def _is_redeemed(user_json: dict[str, Any], fpmmTrade: dict[str, Any]) -> bool:
@@ -340,31 +434,51 @@ def _is_redeemed(user_json: dict[str, Any], fpmmTrade: dict[str, Any]) -> bool:
     return False
 
 
-def _compute_roi(investment: int, net_earnings: int) -> float:
-    if investment != 0:
-        roi = net_earnings / investment
+def _compute_roi(initial_value: int, final_value: int) -> float:
+    if initial_value != 0:
+        roi = (final_value - initial_value) / initial_value
     else:
         roi = 0.0
 
     return roi
 
 
-def _compute_totals(table: dict[Any, dict[Any, Any]]) -> None:
+def _compute_totals(
+    table: dict[Any, dict[Any, Any]], mech_statistics: dict[str, Any]
+) -> None:
     for row in table.keys():
         total = sum(table[row][c] for c in table[row])
         table[row]["TOTAL"] = total
 
+    # Total mech fees and calls need to be recomputed, because there could be mech calls
+    # for markets that were not traded
+    total_mech_calls = 0
+    total_mech_fees = 0
+
+    for _, v in mech_statistics.items():
+        total_mech_calls += v["count"]
+        total_mech_fees += v["fees"]
+
+    table[MarketAttribute.MECH_CALLS]["TOTAL"] = total_mech_calls
+    table[MarketAttribute.MECH_FEES]["TOTAL"] = total_mech_fees
+
     for col in STATS_TABLE_COLS:
         # Omen deducts the fee from collateral_amount (INVESTMENT) to compute outcomes_tokens_traded (EARNINGS).
-        # Therefore, we do not need to deduct the fees again here to compute NET_EARNINGS.
+        table[MarketAttribute.INVESTMENT][col] = (
+            table[MarketAttribute.INVESTMENT][col] - table[MarketAttribute.FEES][col]
+        )
         table[MarketAttribute.NET_EARNINGS][col] = (
             table[MarketAttribute.EARNINGS][col]
             - table[MarketAttribute.INVESTMENT][col]
+            - table[MarketAttribute.FEES][col]
+            - table[MarketAttribute.MECH_FEES][col]
         )
         # ROI is recomputed here for all columns, including TOTAL.
         table[MarketAttribute.ROI][col] = _compute_roi(
-            table[MarketAttribute.INVESTMENT][col],
-            table[MarketAttribute.NET_EARNINGS][col],
+            table[MarketAttribute.INVESTMENT][col]
+            + table[MarketAttribute.FEES][col]
+            + table[MarketAttribute.MECH_FEES][col],
+            table[MarketAttribute.EARNINGS][col],
         )
 
 
@@ -410,10 +524,20 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         + "\n"
     )
     table_str += (
+        f"{MarketAttribute.MECH_CALLS:<{column_width}}"
+        + "".join(
+            [
+                f"{table[MarketAttribute.MECH_CALLS][c]:>{column_width}}"
+                for c in STATS_TABLE_COLS
+            ]
+        )
+        + "\n"
+    )
+    table_str += (
         f"{MarketAttribute.INVESTMENT:<{column_width}}"
         + "".join(
             [
-                f"{wei_to_dai(table[MarketAttribute.INVESTMENT][c]):>{column_width}}"
+                f"{wei_to_xdai(table[MarketAttribute.INVESTMENT][c]):>{column_width}}"
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -423,7 +547,17 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         f"{MarketAttribute.FEES:<{column_width}}"
         + "".join(
             [
-                f"{wei_to_dai(table[MarketAttribute.FEES][c]):>{column_width}}"
+                f"{wei_to_xdai(table[MarketAttribute.FEES][c]):>{column_width}}"
+                for c in STATS_TABLE_COLS
+            ]
+        )
+        + "\n"
+    )
+    table_str += (
+        f"{MarketAttribute.MECH_FEES:<{column_width}}"
+        + "".join(
+            [
+                f"{wei_to_xdai(table[MarketAttribute.MECH_FEES][c]):>{column_width}}"
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -433,7 +567,7 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         f"{MarketAttribute.EARNINGS:<{column_width}}"
         + "".join(
             [
-                f"{wei_to_dai(table[MarketAttribute.EARNINGS][c]):>{column_width}}"
+                f"{wei_to_xdai(table[MarketAttribute.EARNINGS][c]):>{column_width}}"
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -443,7 +577,7 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         f"{MarketAttribute.NET_EARNINGS:<{column_width}}"
         + "".join(
             [
-                f"{wei_to_dai(table[MarketAttribute.NET_EARNINGS][c]):>{column_width}}"
+                f"{wei_to_xdai(table[MarketAttribute.NET_EARNINGS][c]):>{column_width}}"
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -453,7 +587,7 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         f"{MarketAttribute.REDEMPTIONS:<{column_width}}"
         + "".join(
             [
-                f"{wei_to_dai(table[MarketAttribute.REDEMPTIONS][c]):>{column_width}}"
+                f"{wei_to_xdai(table[MarketAttribute.REDEMPTIONS][c]):>{column_width}}"
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -463,7 +597,7 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
         f"{MarketAttribute.ROI:<{column_width}}"
         + "".join(
             [
-                f"{table[MarketAttribute.ROI][c]*100.0:>{column_width-4}.2f} %  "
+                f"{table[MarketAttribute.ROI][c]*100.0:>{column_width-5}.2f} %   "
                 for c in STATS_TABLE_COLS
             ]
         )
@@ -474,7 +608,10 @@ def _format_table(table: dict[Any, dict[Any, Any]]) -> str:
 
 
 def parse_user(  # pylint: disable=too-many-locals,too-many-statements
-    creator: str, creator_trades_json: dict[str, Any]
+    rpc: str,
+    creator: str,
+    creator_trades_json: dict[str, Any],
+    mech_statistics: dict[str, Any],
 ) -> tuple[str, dict[Any, Any]]:
     """Parse the trades from the response."""
 
@@ -526,10 +663,15 @@ def parse_user(  # pylint: disable=too-many-locals,too-many-statements
                 market_status
             ] += collateral_amount
             statistics_table[MarketAttribute.FEES][market_status] += fee_amount
+            statistics_table[MarketAttribute.MECH_CALLS][
+                market_status
+            ] += mech_statistics[fpmmTrade["title"]]["count"]
+            mech_fees = mech_statistics[fpmmTrade["title"]]["fees"]
+            statistics_table[MarketAttribute.MECH_FEES][market_status] += mech_fees
 
             output += f" Market status: {market_status}\n"
-            output += f"        Bought: {wei_to_dai(collateral_amount)} for {wei_to_dai(outcomes_tokens_traded)} {fpmm['outcomes'][outcome_index]!r} tokens\n"
-            output += f"           Fee: {wei_to_dai(fee_amount)}\n"
+            output += f"        Bought: {wei_to_xdai(collateral_amount)} for {wei_to_xdai(outcomes_tokens_traded)} {fpmm['outcomes'][outcome_index]!r} tokens\n"
+            output += f"           Fee: {wei_to_xdai(fee_amount)}\n"
             output += f"   Your answer: {fpmm['outcomes'][outcome_index]!r}\n"
 
             if market_status == MarketState.FINALIZING:
@@ -556,11 +698,11 @@ def parse_user(  # pylint: disable=too-many-locals,too-many-statements
                 if is_invalid:
                     earnings = collateral_amount
                     output += "  Final answer: Market has been declared invalid.\n"
-                    output += f"      Earnings: {wei_to_dai(earnings)}\n"
+                    output += f"      Earnings: {wei_to_xdai(earnings)}\n"
                 elif outcome_index == current_answer:
                     earnings = outcomes_tokens_traded
                     output += f"  Final answer: {fpmm['outcomes'][current_answer]!r} - Congrats! The trade was for the winner answer.\n"
-                    output += f"      Earnings: {wei_to_dai(earnings)}\n"
+                    output += f"      Earnings: {wei_to_xdai(earnings)}\n"
                     redeemed = _is_redeemed(user_json, fpmmTrade)
                     output += f"      Redeemed: {redeemed}\n"
                     statistics_table[MarketAttribute.WINNER_TRADES][market_status] += 1
@@ -591,14 +733,55 @@ def parse_user(  # pylint: disable=too-many-locals,too-many-statements
     output += "--------------------------\n"
     output += "\n"
 
-    _compute_totals(statistics_table)
+    # Read rpc and get safe address balance
+    safe_address_balance = get_balance(creator, rpc)
+
+    output += f"Safe address:    {creator}\n"
+    output += f"Address balance: {wei_to_xdai(safe_address_balance)}\n"
+
+    wxdai_balance = get_token_balance(creator, WXDAI_CONTRACT_ADDRESS, rpc)
+    output += f"Token balance:   {wei_to_wxdai(wxdai_balance)}\n\n"
+
+    _compute_totals(statistics_table, mech_statistics)
     output += _format_table(statistics_table)
 
     return output, statistics_table
 
 
+def get_mech_statistics(mech_requests: Dict[str, Any]) -> Dict[str, Dict[str, int]]:
+    """Outputs a table with Mech statistics"""
+
+    mech_statistics: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+    for mech_request in mech_requests.values():
+        if mech_request["ipfs_contents"]["tool"] in IRRELEVANT_TOOLS:
+            continue
+
+        prompt = mech_request["ipfs_contents"]["prompt"]
+        prompt = prompt.replace("\n", " ")
+        prompt = prompt.strip()
+        prompt = re.sub(r"\s+", " ", prompt)
+        prompt_match = re.search(r"\"(.*)\"", prompt)
+        if prompt_match:
+            question = prompt_match.group(1)
+        else:
+            question = prompt
+
+        mech_statistics[question]["count"] += 1
+        mech_statistics[question]["fees"] += mech_request["fee"]
+
+    return mech_statistics
+
+
 if __name__ == "__main__":
     user_args = _parse_args()
+
+    with open(RPC_PATH, "r", encoding="utf-8") as rpc_file:
+        rpc = rpc_file.read()
+
+    mech_requests = get_mech_requests(rpc, user_args.creator)
+    mech_statistics = get_mech_statistics(mech_requests)
+
     trades_json = _query_omen_xdai_subgraph(
         user_args.creator,
         user_args.from_date.timestamp(),
@@ -606,5 +789,5 @@ if __name__ == "__main__":
         user_args.fpmm_created_from_date.timestamp(),
         user_args.fpmm_created_to_date.timestamp(),
     )
-    parsed_output, _ = parse_user(user_args.creator, trades_json)
+    parsed_output, _ = parse_user(rpc, user_args.creator, trades_json, mech_statistics)
     print(parsed_output)
